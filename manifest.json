@@ -1,0 +1,27 @@
+{
+  "manifest_version": 2,
+  "name": "Instant Save for Instagram",
+  "short_name": "Instant Save for Instagram",
+  "version": "1.5",
+  "description": "This extension allows saving of any Instagram image via a single click on the context menu.",
+  "offline_enabled": false,
+  
+  "background": {
+    "scripts": ["background.js"]
+  },
+  
+  "content_scripts": [
+    {
+      "matches": [ "https://www.instagram.com/*" ],
+      "js": [ "app.js" ]
+    }
+  ],
+  
+  "permissions": [
+    "contextMenus"
+   ],
+   
+   "icons": {
+      "16": "camera-16px.png"
+    }
+}
