@@ -12,7 +12,7 @@
   
   "content_scripts": [
     {
-      "matches": [ "https://www.instagram.com/*" ],
+      "matches": [ "https://www.instagram.com/*","https://www.flickr.com/*" ],
       "js": [ "app.js" ]
     }
   ],
