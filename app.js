@@ -1,16 +1,45 @@
 var last_target = null;
+var saveStorm = false;
 document.addEventListener('mousedown', function(event){
   //possibility: check that the mouse button == 2
   last_target = event.target;
+  if(saveStorm)
+    saveImage(saveStorm);
 }, true);
 
-chrome.runtime.onMessage.addListener(function(request, sender, sendResponse){
+chrome.runtime.sendMessage({getSaveStorm: true}, function(response) {
+  if(response.saveStorm) {
+    enableSaveStorm();
+  }
+});
+
+chrome.runtime.onMessage.addListener(function(request, sender, sendResponse){ 
+  if(request.event == "saveStorm") {
+    enableSaveStorm();
+  } 
+  else if(request.event == "saveStormStop") {
+    saveStorm = false;
+  } 
+  else {
+    saveImage(request.event); 
+  }
+});
+
+function enableSaveStorm() {
+  if(window.location.href.indexOf("instagram") > 0) {
+      saveStorm = "saveInstagramImage";
+    } else if (window.location.href.indexOf("flickr") > 0) {
+      saveStorm = "saveFlickrImage";
+    }
+}
+
+function saveImage(requestType){
   try {
     var filePath = "unknown";
     var fileName = "download";
     var filenamePrefix = "";
 
-    if(request.event == "saveInstagramImage") {
+    if(requestType == "saveInstagramImage") {
       //get the file path
       filePath = last_target.parentNode.childNodes[0].childNodes[0];
       //var shortcodeBaseUrl = last_target.parentNode.href.split("?")[0]; // + '?__a=1'
@@ -44,11 +73,11 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse){
             postDataUrl = bottomContainer.childNodes[2].childNodes[0].href + '?__a=1';
           else 
             postDataUrl = bottomContainer.childNodes[3].childNodes[0].href + '?__a=1';
-          var request = new XMLHttpRequest();
-          request.open('GET', postDataUrl, false);  // `false` makes the request synchronous
-          request.send(null);
-          if (request.status === 200) {
-            var videoFilePath = request.responseText.split("<BaseURL>")[1].split(".mp4")[0] + ".mp4"
+          var videoMetadataRequest = new XMLHttpRequest();
+          videoMetadataRequest.open('GET', postDataUrl, false);  // `false` makes the request synchronous
+          videoMetadataRequest.send(null);
+          if (videoMetadataRequest.status === 200) {
+            var videoFilePath = videoMetadataRequest.responseText.split("<BaseURL>")[1].split(".mp4")[0] + ".mp4"
             if(videoFilePath) {
               filePath = videoFilePath;
             }
@@ -87,8 +116,13 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse){
       }
 
       fileName = filePath.split('/').pop();
+
+      //Handle issue reported by user where files had random characters appended after their extension
+      if(/\.jpg(.+)/.test(fileName)) {
+      	fileName = fileName.split(".jpg")[0] + ".jpg";
+      }
     }
-    else if (request.event == "saveFlickrImage") {
+    else if (requestType == "saveFlickrImage") {
       //Groups or Sets
       try {
         var imageDiv = last_target.parentNode.parentNode.parentNode;
@@ -163,4 +197,4 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse){
   catch(err) {
       console.log("Invalid image, cannot be saved...", err);
   }
-});
+}
