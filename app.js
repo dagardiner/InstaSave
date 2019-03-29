@@ -1,5 +1,13 @@
 var last_target = null;
 var saveStorm = false;
+
+window.addEventListener('click', function(e){
+	if(e.button == 0 && e.ctrlKey){
+    //IG added a listener that prevents ctrl+click from opening the link in a new tab - this prevents that block from being triggered
+		e.stopPropagation();
+	}
+}, true);
+
 document.addEventListener('mousedown', function(event){
   //possibility: check that the mouse button == 2
   last_target = event.target;
@@ -33,15 +41,37 @@ function enableSaveStorm() {
     }
 }
 
+
+
 function saveImage(requestType){
   try {
     var filePath = "unknown";
     var fileName = "download";
     var filenamePrefix = "";
+    if(requestType == "saveIgStoryImage") {
+      var fileExtension = ".jpg";
 
-    if(requestType == "saveInstagramImage") {
+      //photo
+      filePath = document.getElementsByTagName("img")[1].srcset.split(",").slice(-1)[0].split(" ")[0];
+
+      if(document.getElementsByTagName("video")[0]) {
+        filePath = document.getElementsByTagName("video")[0].childNodes[0].src;
+        fileExtension = ".mp4";
+      }
+
+      fileName = document.getElementsByClassName("notranslate")[0].text;
+      var dateObject = document.getElementsByTagName("time")[0];
+      if(dateObject && dateObject.dateTime)
+        fileName += " " + dateObject.dateTime.split(".")[0].replace("T", " ")
+      fileName += fileExtension;
+    }
+    else if(requestType == "saveInstagramImage") {
       //get the file path
-      filePath = last_target.parentNode.childNodes[0].childNodes[0];
+      var imgContainer = last_target.parentNode;
+      //If the click was on a tag, we need to go up a bit further
+      if(imgContainer.tagName == "SPAN")
+        imgContainer = imgContainer.parentNode.parentNode;
+      filePath = imgContainer.childNodes[0].childNodes[0];
       //var shortcodeBaseUrl = last_target.parentNode.href.split("?")[0]; // + '?__a=1'
       //console.log(shortcodeBaseUrl);
 
@@ -120,6 +150,9 @@ function saveImage(requestType){
       //Handle issue reported by user where files had random characters appended after their extension
       if(/\.jpg(.+)/.test(fileName)) {
       	fileName = fileName.split(".jpg")[0] + ".jpg";
+      }
+      if(/\.mp4(.+)/.test(fileName)) {
+      	fileName = fileName.split(".mp4")[0] + ".mp4";
       }
     }
     else if (requestType == "saveFlickrImage") {
