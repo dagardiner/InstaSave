@@ -88,31 +88,68 @@ function saveImage(requestType){
         //window._sharedData.entry_data.PostPage[0].graphql.shortcode_media.dash_info.video_dash_manifest.split("BaseURL\u003e")[1].split(".mp4")[0] + ".mp4"
         //Video - post page
         try {
+          // Feed page logic
+          if (document.documentElement.innerHTML.indexOf("('feed") > -1)
+          {
+            var shortCode = Array.from(imgContainer.closest('article').getElementsByTagName('a')).find(a => a.pathname.startsWith("/p/")).href.split("/p/")[1].replace("/", "")
+            filePath = document.documentElement.innerHTML.split("('feed")[1].split(shortCode)[1].split("<BaseURL>")[1].split("<")[0].replace(/\\\//g, '/').replace(/&amp;/g, '&')
+          }
+          // Individual Post page logic
+          else if(document.documentElement.innerHTML.indexOf("graphql") > -1)
+          {
+            var baseUrlString = document.documentElement.innerHTML.split("graphql")[1].split("<BaseURL>")[1];
+            if(baseUrlString)
+            {
+              filePath = baseUrlString.split("<")[0].replace(/\\\//g, '/').replace(/&amp;/g, '&');
+              //another option, but uglier
+              //new DOMParser().parseFromString(window.__additionalData["/p/B7Jcp4ABJkN/"].data.graphql.shortcode_media.dash_info.video_dash_manifest, "text/xml").getElementsByTagName("BaseURL")[0].innerHTML
+            }
+            else
+            {
+              var postUrl = Array.from(imgContainer.closest('article').getElementsByTagName('time')).pop().parentNode.href;
+              console.log("Need to get content from " + postUrl);
+              var videoMetadataRequest = new XMLHttpRequest();
+              videoMetadataRequest.open('GET', postUrl, false);  // `false` makes the request synchronous
+              videoMetadataRequest.send(null);
+              if (videoMetadataRequest.status === 200) {
+                var videoFilePath = videoMetadataRequest.responseText.split("graphql")[1].split("<BaseURL>")[1].split("<")[0].replace(/\\\//g, '/').replace(/&amp;/g, '&');
+                if(videoFilePath) {
+                  filePath = videoFilePath;
+                }
+              }
+            }
+          }
+          //This logic used to work, but the website has since changed to the above logic
+          /*
           var singlePostVideoFilePath = [].filter.call(document.getElementsByTagName("script"), e => e.innerHTML.startsWith("window._sharedData"))[0].innerHTML.split("BaseURL\\u003e")[1].split(".mp4")[0] + ".mp4"
           if(singlePostVideoFilePath) {
             filePath = singlePostVideoFilePath;
           }
+          */
         }
         catch(err) {}
+
+        //I *think* this logic is no longer used, but not confident enough to remove it
         //video - timeline or user page
         try {
           var bottomContainer = last_target.parentNode.parentNode.parentNode.parentNode.parentNode.childNodes[2];
           var postDataUrl = "";
-          console.log(bottomContainer);
-          if(bottomContainer.childNodes.length < 5) //if no likes yet, one fewer <section> tags - we're really just looking for the second div tag in the bottomContainer
-            postDataUrl = bottomContainer.childNodes[2].childNodes[0].href + '?__a=1';
-          else 
-            postDataUrl = bottomContainer.childNodes[3].childNodes[0].href + '?__a=1';
-          var videoMetadataRequest = new XMLHttpRequest();
-          videoMetadataRequest.open('GET', postDataUrl, false);  // `false` makes the request synchronous
-          videoMetadataRequest.send(null);
-          if (videoMetadataRequest.status === 200) {
-            var videoFilePath = videoMetadataRequest.responseText.split("<BaseURL>")[1].split(".mp4")[0] + ".mp4"
-            if(videoFilePath) {
-              filePath = videoFilePath;
+          if(bottomContainer)
+          {
+            if(bottomContainer.childNodes.length < 5) //if no likes yet, one fewer <section> tags - we're really just looking for the second div tag in the bottomContainer
+              postDataUrl = bottomContainer.childNodes[2].childNodes[0].href + '?__a=1';
+            else 
+              postDataUrl = bottomContainer.childNodes[3].childNodes[0].href + '?__a=1';
+            var videoMetadataRequest = new XMLHttpRequest();
+            videoMetadataRequest.open('GET', postDataUrl, false);  // `false` makes the request synchronous
+            videoMetadataRequest.send(null);
+            if (videoMetadataRequest.status === 200) {
+              var videoFilePath = videoMetadataRequest.responseText.split("<BaseURL>")[1].split(".mp4")[0] + ".mp4"
+              if(videoFilePath) {
+                filePath = videoFilePath;
+              }
             }
           }
-
           //var singlePostVideoFilePath = [].filter.call(document.getElementsByTagName("script"), e => e.innerHTML.startsWith("window._sharedData"))[0].innerHTML.split("BaseURL\\u003e")[1].split(".mp4")[0] + ".mp4"
           //if(singlePostVideoFilePath) {
           //  filePath = singlePostVideoFilePath;
