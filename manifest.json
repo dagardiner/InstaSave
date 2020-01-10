@@ -2,7 +2,7 @@
   "manifest_version": 2,
   "name": "Instant Save for Instagram and Flickr",
   "short_name": "Instant Save",
-  "version": "2.5",
+  "version": "2.10",
   "description": "This extension allows saving of any Instagram or Flickr image via a single click on the context menu.",
   "offline_enabled": false,
   
