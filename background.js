@@ -62,7 +62,7 @@ function triggerSaveFlickrBatch(tabs, startIndex) {
 		endIndex = tabs.length;
 
 	for (i = startIndex; i < endIndex; i++) { 
-		console.log("Sending DL request to " + tabs[i].id)
+		//console.log("Sending DL request to " + tabs[i].id)
 		chrome.tabs.sendMessage(tabs[i].id, {event: "saveFlickrImage"}, function(response) {});
 	}
 
@@ -73,7 +73,7 @@ function triggerSaveFlickrBatch(tabs, startIndex) {
 
 var saveStorm = false;
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse){ 
-	console.log("notifying " + saveStorm)
+	//console.log("notifying " + saveStorm)
 	if(request.getSaveStorm) {
 		sendResponse({saveStorm: saveStorm});
 	}

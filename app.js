@@ -73,7 +73,7 @@ function parseAdditionalData(docToParse) {
     if(!document.bonusData) document.bonusData = {};
     document.bonusData[keyName] = data;
 
-    console.log(document.bonusData);
+    //console.log(document.bonusData);
 
     return data;
   }
@@ -83,7 +83,7 @@ parseAdditionalData(document);
 
 function saveImage(requestType){
   try {
-    var filePath = "unknown";
+    var filePath = false;
     var fileName = "download";
 
     if(requestType == "saveIgStoryImage") {
@@ -94,7 +94,8 @@ function saveImage(requestType){
       if(!srcSet) { // Updated ui structure introduced around 12/10/2020
         srcSet = document.getElementsByTagName("img")[0].srcset
       }
-      filePath = srcSet.split(",").slice(-1)[0].split(" ")[0];
+      //filePath = srcSet.split(",").slice(-1)[0].split(" ")[0];
+      filePath = srcSet.split(",")[0].split(" ")[0]; //Updated logic around 12/25/2020 from above
       fileName = document.getElementsByClassName("notranslate")[0].text;
       
       //video
@@ -133,7 +134,7 @@ function saveImage(requestType){
       }
       filePath = filePathNode.src;
 
-      // User Profile Page - need to retrieve full URL from target link
+      // User Profile Page click on small icon in user feed - need to retrieve full URL from target link
       if (!filePath) {
         var postPageRequest = new XMLHttpRequest();
         postPageRequest.onreadystatechange = function() {
@@ -150,7 +151,6 @@ function saveImage(requestType){
                 try{ 
                   //the last items is the largest resolution
                   url = newData.graphql.shortcode_media.display_resources[newData.graphql.shortcode_media.display_resources.length - 1].src;
-                  console.log(url);
                 } catch {}
               }
 
@@ -161,7 +161,7 @@ function saveImage(requestType){
             }
           }
         };
-        postPageRequest.open('GET', last_target.parentNode.parentNode.href, false);  // `false` makes the request synchronous
+        postPageRequest.open('GET', last_target.parentNode.parentNode.href);
         postPageRequest.send(null);
         return;
       }
@@ -169,29 +169,85 @@ function saveImage(requestType){
       //If it's a video, need some more logic to get to the proper link on this page
       if (!filePath || filePath.startsWith("blob:")) {
         try {
+          filePath = false;
+
           // Main Feed page logic
-          if (document.bonusData["feed"]) {
-            var searchUrl = filePathNode.poster;
+          if (document.bonusData && document.bonusData["feed"]) {
+            var posterUrl = filePathNode.poster;
               
             var edges = document.bonusData["feed"].user.edge_web_feed_timeline.edges;
-            var edge;
-            for(let i = 0; i < edges.length && !edge; i++) {
-              if(edges[i].node.display_url == searchUrl)
-                edge = edges[i];
+            for(let i = 0; i < edges.length && !filePath; i++) {
+              if(edges[i].node.display_url == posterUrl)
+              filePath = edges[i].node.video_url;
             }
-            if(edge)
-              filePath = edge.node.video_url;
-            }
+          }
           // Individual Post page logic
-          else if(document.bonusData[window.location.pathname]) {
-            //This is the preferred method, because it includes audio+video; the else logic only returns video.
+          else if(document.bonusData && document.bonusData[window.location.pathname]) {
+            // Getting it from BonusData is the preferred method, because it includes audio+video; the video manifest logic only returns video.
+
+            // This handles a single-video post
             if(document.bonusData[window.location.pathname].graphql.shortcode_media.video_url) {
               filePath = document.bonusData[window.location.pathname].graphql.shortcode_media.video_url;
             }
+            // This handles a video in a multi-image post
             else {
-              var videoManifest = document.bonusData[window.location.pathname].videoManifest;
-              filePath = videoManifest.split('mimeType="video/mp4"')[1].split('<BaseURL>')[1].split('</BaseURL>')[0];
+              var posterUrl = filePathNode.poster;
+              if (document.bonusData[window.location.pathname].graphql.shortcode_media.edge_sidecar_to_children) {
+                var edges = document.bonusData[window.location.pathname].graphql.shortcode_media.edge_sidecar_to_children.edges;
+                for(let i = 0; i < edges.length && !filePath; i++) {
+                  if(edges[i].node.display_url == posterUrl) {
+                    filePath = edges[i].node.video_url
+                  }
+                }
+              }
+
+              //This is a catch-all using non-ideal logic, which should hopefully never be hit
+              if(!filePath && document.bonusData[window.location.pathname].videoManifest) {
+                var videoManifest = document.bonusData[window.location.pathname].videoManifest;
+                filePath = videoManifest.split('mimeType="video/mp4"')[1].split('<BaseURL>')[1].split('</BaseURL>')[0];
+              }
             }
+          }
+          // User Profile page logic - need to load the post page to get the BonusData object and the media URLs
+          else {
+            var posterUrl = filePathNode.poster;
+
+            var postPageRequest = new XMLHttpRequest();
+            postPageRequest.onreadystatechange = function() {
+              if (this.readyState == 4 && this.status == 200) {
+                var parser = new DOMParser();
+                var xmlDoc = parser.parseFromString(this.response,"text/html");
+                var newData = parseAdditionalData(xmlDoc);
+
+                if(newData) {
+                  var url = false;
+                  //single Video post
+                  if(newData.graphql.shortcode_media.video_url) {
+                    url = newData.graphql.shortcode_media.video_url;
+                  }
+                  // multi-image post
+                  else {
+                    if (newData.graphql.shortcode_media.edge_sidecar_to_children) {
+                      var edges = newData.graphql.shortcode_media.edge_sidecar_to_children.edges;
+                      for(let i = 0; i < edges.length && !url; i++) {
+                        if(edges[i].node.display_url == posterUrl) {
+                          url = edges[i].node.video_url
+                        }
+                      }
+                    }
+                  }
+
+                  if(url) 
+                    performSave(getIgFilename(url, newData.graphql.shortcode_media.owner.username), url);
+                  else 
+                    console.log("Cannot find save URL");
+                }
+              }
+            };
+            postPageRequest.open('GET', window.location.href);
+            postPageRequest.send(null);
+            return;
+
           }
         }
         catch(err) {
